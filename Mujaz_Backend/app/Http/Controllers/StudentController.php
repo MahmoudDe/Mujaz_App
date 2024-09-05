@@ -96,6 +96,65 @@ class StudentController extends Controller
         }
     }
 
+    public function getstforteacherwithinfo(Teacher $teacher)
+{
+
+    $students = Student::where('teacher_id', $teacher->id)->get();
+    $studentsWithInfo = [];
+
+    foreach ($students as $student) {
+        $sessions = Session::where('student_id', $student->id)->get();
+
+        $lastSession = Session::where('student_id', $student->id)
+            ->latest()->first();
+
+    
+        $name = $student->name;
+        $teacher_name = $student->teacher_name;
+
+        if (!$sessions || !$lastSession) {
+            $studentInfo = [
+                'id' => $student->id,
+                'name' => $name,
+                'teacher_name' => $teacher_name,
+                'last_session' => null,
+                'remain_pages' => null,
+                'remain_verses' => null,
+                'average_marks' => null,
+                'tested_verses' => null,
+                'notes' => null
+            ];
+        } else {
+            // Calculate remaining pages and verses
+            $remainPages = (int)(604 - last($lastSession->pages));
+            $remainVerses = (float)($remainPages / 20);
+
+            // Calculate average marks
+            $sum = 0;
+            foreach ($sessions as $session) {
+                $sum += $session->mark;
+            }
+            $avgMarks = (float)($sum / count($sessions));
+
+            // Student's detailed info
+            $studentInfo = [
+                'id' => $student->id,
+                'name' => $name,
+                'teacher_name' => $teacher_name,
+                'last_session' => $lastSession,
+                'remain_pages' => $remainPages,
+                'remain_verses' => $remainVerses,
+                'average_marks' => $avgMarks,
+                'tested_verses' => $student->tested_verses,
+                'notes' => $student->notes
+            ];
+        }
+        // Add the detailed info to the array
+        $studentsWithInfo[] = $studentInfo;
+    }
+    return response()->json($studentsWithInfo);
+}
+
     /**
      * Update the specified resource in storage.
      */

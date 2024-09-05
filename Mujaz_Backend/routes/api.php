@@ -22,6 +22,9 @@ use Illuminate\Support\Facades\Route;
 
 // PublicRoutes
 Route::post('/user/login', [UserController::class, 'login']);
+   // Combined route to get students by teacher with detailed info for each student
+Route::get('/teacher/{teacher}/students-info', [StudentController::class, 'getstforteacherwithinfo']);
+
 
 // RoutesForAdmin
 Route::group((['prefix' => 'admin', 'middleware' => ['auth:sanctum']]), function () {
@@ -60,6 +63,8 @@ Route::group((['prefix' => 'admin', 'middleware' => ['auth:sanctum']]), function
 
     // GetStudentsByTeacher
     Route::get('/students/{teacher}', [StudentController::class, 'getByTeacher']);
+    
+ 
 
     // FillTeacherInformation
     Route::put('/teacher/form/{teacher}', [TeacherController::class, 'update']);
