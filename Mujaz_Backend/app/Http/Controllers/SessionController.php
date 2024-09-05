@@ -19,11 +19,9 @@ class SessionController extends Controller
      */
     public function index()
     {
-        $sessions = Session::with('teacher:id,name')->get();
-    
+        $sessions = session::all();
         return response()->json($sessions);
     }
-    
 
 
 
