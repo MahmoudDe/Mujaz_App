@@ -29,4 +29,9 @@ class session extends Model
         'ayat' => 'array',
         'mistakes' => 'array'
     ];
+
+    public function teacher()
+    {
+        return $this->belongsTo(Teacher::class, 'teacher_id');
+    }
 }
