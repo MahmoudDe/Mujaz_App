@@ -97,6 +97,8 @@ Route::group((['prefix' => 'admin', 'middleware' => ['auth:sanctum']]), function
 // RoutesForTeacher
 Route::group((['prefix' => 'teacher', 'middleware' => ['auth:sanctum']]), function () {
 
+    Route::post('/save-token', [NotificationController::class, 'saveFCMToken']);
+
     // Logout
     Route::post('/user/logout', [UserController::class, 'logout']);
 

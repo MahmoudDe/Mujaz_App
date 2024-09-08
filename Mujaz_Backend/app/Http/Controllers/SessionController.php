@@ -2,16 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use Google\Cloud\Firestore\FirestoreClient;
 use Illuminate\Support\Facades\Log;
-
-use App\Models\session;
-use App\Models\student;
-use App\Models\teacher;
+use App\Models\Session;
+use App\Models\Student;
+use App\Models\Teacher;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 
+        
 class SessionController extends Controller
 {
     /**
@@ -28,16 +28,16 @@ class SessionController extends Controller
     public function store(Request $request)
     {
         Log::info('Starting session creation', $request->all());
-
+    
         $user = User::find($request->user_id);
         $student = Student::find($request->student_id);
         $teacher = Teacher::where('user_id', $request->user_id)->first();
-
+    
         if (!$user || !$student) {
             Log::error('User or student not found', ['user_id' => $request->user_id, 'student_id' => $request->student_id]);
             return response()->json(['error' => 'User or student not found'], 404);
         }
-
+    
         try {
             if ($user->role === 'admin') {
                 $session = Session::create([
@@ -56,22 +56,22 @@ class SessionController extends Controller
                     'duration' => $request->duration,
                     'notes' => $request->notes,
                 ]);
-
+    
                 Log::info('Session created by admin', ['session' => $session]);
-
+    
                 $adminDeviceToken = Notification::where('user_id', $user->id)->value('device_token');
-
+    
                 if ($adminDeviceToken) {
                     $title = 'جلسة جديدة للطالب ' . $student->name . '!';
                     $body = "تم تسميع جلسة جديدة 😍! قم بإنشاء موعد آخر";
-
+    
                     $customData = [
                         'التاريخ' => $request->date,
                         'الأستاذ' => $user->name,
-                        'رقم الجلسة' => $session->id,
-                        'الكمية' => $request->amount,
+                        'رقم الجلسة' => (string) $session->id, 
+                        'الكمية' => (string) $request->amount,
                     ];
-
+                    
                     $this->sendNotification($adminDeviceToken, $title, $body, $customData);
                     Log::info('Notification sent to admin', ['deviceToken' => $adminDeviceToken]);
                 }
@@ -80,7 +80,7 @@ class SessionController extends Controller
                     Log::error('Teacher not found for user', ['user_id' => $request->user_id]);
                     return response()->json(['error' => 'Teacher not found'], 404);
                 }
-
+    
                 $session = Session::create([
                     'date' => $request->date,
                     'student_id' => $student->id,
@@ -97,7 +97,7 @@ class SessionController extends Controller
                     'duration' => $request->duration,
                     'notes' => $request->notes,
                 ]);
-
+    
                 Log::info('Session created by teacher', ['session' => $session]);
 
                 $admin = User::where('role', 'admin')->first();
@@ -105,22 +105,41 @@ class SessionController extends Controller
                     $adminDeviceToken = Notification::where('user_id', $admin->id)->value('device_token');
 
                     if ($adminDeviceToken) {
-                        $title = 'جلسة جديدة تمت بواسطة الأستاذ ' . $teacher->name . '!😍';
+                        $title = 'جلسة جديدة تمت بواسطة الأستاذ ' . $teacher->name . '!🚀';
                         $body = "تم تسميع جلسة جديدة✔️ للطالب " . $student->name . "!\n";
 
                         $customData = [
                             'التاريخ' => $request->date,
                             'الأستاذ' => $teacher->name,
-                            'رقم الجلسة' => $session->id,
-                            'الكمية' => $request->amount,
+                            'رقم الجلسة' => (string) $session->id,
+                            'الكمية' => (string) $request->amount,
                         ];
 
                         $this->sendNotification($adminDeviceToken, $title, $body, $customData);
                         Log::info('Notification sent to admin by teacher', ['deviceToken' => $adminDeviceToken]);
-                    }
+                    }}
+                // Send notification to the teacher's device
+                $teacherDeviceToken = Notification::where('user_id', $teacher->user_id)->value('device_token');
+    
+                if ($teacherDeviceToken) {
+                    $title = ' جلسة جديدة للطالب 👑' . $student->name . '!';
+                    $body = 'لقد قمت بإرسال الجلسة للأدمن 😍🫶🏻';
+    
+                    $customData = [
+                        'التاريخ' => $request->date,
+                        'الأستاذ' => $teacher->name,
+                        'رقم الجلسة' => (string) $session->id, 
+                        'الكمية' => (string) $request->amount, 
+                    ];
+                    
+    
+                    $this->sendNotification($teacherDeviceToken, $title, $body, $customData);
+                    Log::info('Notification sent to teacher', ['deviceToken' => $teacherDeviceToken]);
+                } else {
+                    Log::warning('No device token found for teacher', ['teacher_id' => $teacher->id]);
                 }
             }
-
+    
             return response()->json('Session created successfully', 200);
         } catch (\Exception $e) {
             Log::error('Error creating session', [
@@ -133,40 +152,117 @@ class SessionController extends Controller
         }
     }
 
-
-    protected function sendNotification($deviceToken, $title, $body, $customData)
+    protected function getAccessToken()
     {
-        $url = 'https://fcm.googleapis.com/fcm/send';
-        $serverKey = 'AAAAn5DuF_g:APA91bExwuB_tW3W_OaV1DhJpLXIxqmh1XVBW4tP4-N-Yt0zS6Q7l5QuvQ_6ZDtdEgjeUyILouiMSMBn8VhMrfhJ0kzsJ5l65kYLjG0iPRG-zS-VxjO7LkfW9ktd-X3_gtind_zvZJ0a';
-
-        $data = [
-            'to' => $deviceToken,
-            'notification' => [
-                'title' => $title,
-                'body' => $body,
-                'icon' => 'ic_notification',
-                'sound' => 'default',
-            ],
-            'data' => $customData,
-        ];
-
-        $response = Http::withHeaders([
-            'Authorization' => 'key=' . $serverKey,
-            'Content-Type' => 'application/json',
-        ])->post($url, $data);
-
-        if ($response->successful()) {
-            Log::info('FCM notification sent successfully', ['response' => $response->body()]);
-            return response()->json('Notification sent successfully', 200);
-        } else {
-            Log::error('Failed to send FCM notification', ['response' => $response->body()]);
-            return response()->json('Failed to send notification', 500);
+        try {
+            $jsonKeyFile = storage_path('app/firebase-service-account.json');
+            $key = json_decode(file_get_contents($jsonKeyFile), true);
+    
+            $client = new \Firebase\JWT\JWT();
+            $jwtClient = new \Firebase\JWT\JWT();
+            $token = $jwtClient->encode([
+                'iss' => $key['client_email'],
+                'sub' => $key['client_email'],
+                'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
+                'aud' => 'https://oauth2.googleapis.com/token',
+                'exp' => time() + 3600,
+                'iat' => time()
+            ], $key['private_key'], 'RS256');
+    
+            $client = new \GuzzleHttp\Client();
+            $response = $client->post('https://oauth2.googleapis.com/token', [
+                'form_params' => [
+                    'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                    'assertion' => $token,
+                ],
+            ]);
+    
+            $accessToken = json_decode((string)$response->getBody(), true);
+            return $accessToken['access_token'];
+        } catch (\Exception $e) {
+            Log::error('Error fetching access token', ['error' => $e->getMessage()]);
+            return null;
         }
     }
+    
+    protected function sendNotification($deviceToken, $title, $body, $customData)
+    {
+        try {
+            // Fetch the access token
+            $accessToken = $this->getAccessToken();
+            if (!$accessToken) {
+                return response()->json('Failed to obtain access token', 500);
+            }
+    
+            // FCM API endpoint
+            $url = 'https://fcm.googleapis.com/v1/projects/mujaz-notifications/messages:send';
+    
+            // Prepare the notification data
+            $data = [
+                'message' => [
+                    'token' => $deviceToken,
+                    'notification' => [
+                        'title' => $title,
+                        'body' => $body,
+                    ],
+                    'data' => $customData,
+                ],
+            ];
+    
+            // Send the notification using HTTP POST
+            $client = new \GuzzleHttp\Client();
+            $response = $client->post($url, [
+                'json' => $data,
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $accessToken,
+                    'Content-Type' => 'application/json',
+                ],
+            ]);
 
+            if ($response->getStatusCode() === 200) {
+                Log::info('FCM notification sent successfully', ['response' => (string)$response->getBody()]);
+                return response()->json('Notification sent successfully', 200);
+            } else {
+                Log::error('Failed to send FCM notification', ['response' => (string)$response->getBody()]);
+                return response()->json('Failed to send notification', 500);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error sending FCM notification', ['error' => $e->getMessage()]);
+            return response()->json('Failed to send notification due to error', 500);
+        }
+    }
+    
+    
 
+    // protected function sendNotification($deviceToken, $title, $body, $customData)
+    // {
+    //     $url = 'https://fcm.googleapis.com/fcm/send';
+    //     $serverKey = 'AAAAn5DuF_g:APA91bExwuB_tW3W_OaV1DhJpLXIxqmh1XVBW4tP4-N-Yt0zS6Q7l5QuvQ_6ZDtdEgjeUyILouiMSMBn8VhMrfhJ0kzsJ5l65kYLjG0iPRG-zS-VxjO7LkfW9ktd-X3_gtind_zvZJ0a';
 
+    //     $data = [
+    //         'to' => $deviceToken,
+    //         'notification' => [
+    //             'title' => $title,
+    //             'body' => $body,
+    //             'icon' => 'ic_notification',
+    //             'sound' => 'default',
+    //         ],
+    //         'data' => $customData,
+    //     ];
 
+    //     $response = Http::withHeaders([
+    //         'Authorization' => 'key=' . $serverKey,
+    //         'Content-Type' => 'application/json',
+    //     ])->post($url, $data);
+
+    //     if ($response->successful()) {
+    //         Log::info('FCM notification sent successfully', ['response' => $response->body()]);
+    //         return response()->json('Notification sent successfully', 200);
+    //     } else {
+    //         Log::error('Failed to send FCM notification', ['response' => $response->body()]);
+    //         return response()->json('Failed to send notification', 500);
+    //     }
+    // }
 
 
     // Get sessions by studnet
