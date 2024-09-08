@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use Google\Cloud\Firestore\FirestoreClient;
+
 use Illuminate\Support\Facades\Log;
 use App\Models\Session;
 use App\Models\Student;
