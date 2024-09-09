@@ -155,7 +155,8 @@ class SessionController extends Controller
     protected function getAccessToken()
     {
         try {
-            $jsonKeyFile = storage_path('app/firebase-service-account.json');
+            // Update the path to the service account JSON file
+            $jsonKeyFile = '/var/www/Mujaz_App/credentials/firebase-service-account.json';
             $key = json_decode(file_get_contents($jsonKeyFile), true);
     
             $client = new \Firebase\JWT\JWT();
@@ -184,6 +185,7 @@ class SessionController extends Controller
             return null;
         }
     }
+    
     
     protected function sendNotification($deviceToken, $title, $body, $customData)
     {
