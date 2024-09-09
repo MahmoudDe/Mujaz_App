@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 
 use Illuminate\Support\Facades\Log;
-use App\Models\Session;
-use App\Models\Student;
-use App\Models\Teacher;
+use App\Models\session;
+use App\Models\student;
+use App\Models\teacher;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -155,7 +155,6 @@ class SessionController extends Controller
     protected function getAccessToken()
     {
         try {
-            // Update the path to the service account JSON file
             $jsonKeyFile = '/var/www/Mujaz_App/credentials/firebase-service-account.json';
             $key = json_decode(file_get_contents($jsonKeyFile), true);
     
@@ -190,7 +189,6 @@ class SessionController extends Controller
     protected function sendNotification($deviceToken, $title, $body, $customData)
     {
         try {
-            // Fetch the access token
             $accessToken = $this->getAccessToken();
             if (!$accessToken) {
                 return response()->json('Failed to obtain access token', 500);
@@ -198,8 +196,7 @@ class SessionController extends Controller
     
             // FCM API endpoint
             $url = 'https://fcm.googleapis.com/v1/projects/mujaz-notifications/messages:send';
-    
-            // Prepare the notification data
+
             $data = [
                 'message' => [
                     'token' => $deviceToken,
@@ -210,8 +207,7 @@ class SessionController extends Controller
                     'data' => $customData,
                 ],
             ];
-    
-            // Send the notification using HTTP POST
+      
             $client = new \GuzzleHttp\Client();
             $response = $client->post($url, [
                 'json' => $data,
