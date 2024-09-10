@@ -104,28 +104,30 @@ class SessionController extends Controller
 
                 if ($admins->isNotEmpty()) {
                     foreach ($admins as $admin) {
-                        $adminDeviceToken = Notification::where('user_id', $admin->id)->value('device_token');
+                        $deviceTokens = Notification::where('user_id', $admin->id)->pluck('device_token');
                 
-                        if ($adminDeviceToken) {
-                            $title = 'جلسة جديدة تمت بواسطة الأستاذ ' . $teacher->name . '!🚀';
-                            $body = "تم تسميع جلسة جديدة✔️ للطالب " . $student->name . "!\n";
+                        if ($deviceTokens->isNotEmpty()) {
+                            foreach ($deviceTokens as $deviceToken) {
+                                $title = 'جلسة جديدة تمت بواسطة الأستاذ ' . $teacher->name . '!🚀';
+                                $body = "تم تسميع جلسة جديدة✔️ للطالب " . $student->name . "!\n";
                 
-                            $customData = [
-                                'التاريخ' => $request->date,
-                                'الأستاذ' => $teacher->name,
-                                'رقم الجلسة' => (string) $session->id,
-                                'الكمية' => (string) $request->amount,
-                            ];
+                                $customData = [
+                                    'التاريخ' => $request->date,
+                                    'الأستاذ' => $teacher->name,
+                                    'رقم الجلسة' => (string) $session->id,
+                                    'الكمية' => (string) $request->amount,
+                                ];
                 
-                            $this->sendNotification($adminDeviceToken, $title, $body, $customData);
-                            Log::info('Notification sent to admin by teacher', ['admin_id' => $admin->id, 'deviceToken' => $adminDeviceToken]);
+                                $this->sendNotification($deviceToken, $title, $body, $customData);
+                                Log::info('Notification sent to admin by teacher', ['admin_id' => $admin->id, 'deviceToken' => $deviceToken]);
+                            }
                         } else {
-                            Log::warning('No device token found for admin', ['admin_id' => $admin->id]);
+                            Log::warning('No device tokens found for admin', ['admin_id' => $admin->id]);
                         }
                     }
                 } else {
                     Log::warning('No admins found in the database');
-                }
+                }                
                 
                 // Send notification to the teacher's device
                 $teacherDeviceToken = Notification::where('user_id', $teacher->user_id)->value('device_token');
