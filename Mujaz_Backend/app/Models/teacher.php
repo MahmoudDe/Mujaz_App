@@ -14,4 +14,8 @@ class teacher extends Model
         //'student_name',
         //'students_id',
     ];
+    public function students()
+    {
+        return $this->hasMany(Student::class);
+    }
 }

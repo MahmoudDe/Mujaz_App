@@ -21,4 +21,8 @@ class student extends Model
     protected $casts = [
         'tested_verses' => 'array',
     ];
+    public function teacher()
+    {
+        return $this->belongsTo(Teacher::class);
+    }
 }

@@ -63,8 +63,8 @@ Route::group((['prefix' => 'admin', 'middleware' => ['auth:sanctum']]), function
     
     // get students by teacher with detailed info for each student
     Route::get('/teacher/{teacher}/students-info', [StudentController::class, 'getstforteacherwithinfo']);
- 
-
+    // get teachers with their students 
+    Route::get('/teachers-with-students', [TeacherController::class, 'teachersWithStudents']);
     // FillTeacherInformation
     Route::put('/teacher/form/{teacher}', [TeacherController::class, 'update']);
 

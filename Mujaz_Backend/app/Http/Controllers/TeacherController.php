@@ -64,4 +64,29 @@ class TeacherController extends Controller
     {
         //
     }
+    public function teachersWithStudents()
+    {
+        $teachers = Teacher::with('students')->get();
+        
+        $response = $teachers->map(function($teacher) {
+            return [
+                'id' => $teacher->id,
+                'name' => $teacher->name,
+                'phone' => $teacher->phone,
+                'students' => $teacher->students->map(function($student) {
+                    return [
+                        'id' => $student->id,
+                        'name' => $student->name,
+                        'phone' => $student->phone,
+                        'starting_date' => $student->starting_date,
+                        'remain_pages' => $student->remain_pages,
+                        'remain_verses' => $student->remain_verses,
+                        'average_marks' => $student->average_marks,
+                    ];
+                })
+            ];
+        });
+
+        return response()->json($response);
+    }
 }
