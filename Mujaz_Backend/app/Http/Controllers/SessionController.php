@@ -158,27 +158,31 @@ class SessionController extends Controller
             $jsonKeyFile = '/var/www/Mujaz_App/credentials/firebase-service-account.json';
             $key = json_decode(file_get_contents($jsonKeyFile), true);
     
-            // Generate JWT token
-            $jwtHeader = [
+            $header = [
                 'alg' => 'RS256',
                 'typ' => 'JWT',
             ];
-    
-            $jwtPayload = [
+            
+            $payload = [
                 'iss' => $key['client_email'],
                 'sub' => $key['client_email'],
-                'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
                 'aud' => 'https://oauth2.googleapis.com/token',
-                'exp' => time() + 3600,
+                'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
+                'exp' => time() + 3600,  // Token valid for 1 hour
                 'iat' => time(),
             ];
     
-            $jwtHeaderEncoded = base64_encode(json_encode($jwtHeader));
-            $jwtPayloadEncoded = base64_encode(json_encode($jwtPayload));
-            $signature = hash_hmac('sha256', "$jwtHeaderEncoded.$jwtPayloadEncoded", $key['private_key'], true);
+            // Encode Header and Payload
+            $headerEncoded = base64_encode(json_encode($header));
+            $payloadEncoded = base64_encode(json_encode($payload));
+    
+            // Sign the JWT
+            $signatureInput = "$headerEncoded.$payloadEncoded";
+            $signature = hash_hmac('sha256', $signatureInput, $key['private_key'], true);
             $signatureEncoded = base64_encode($signature);
     
-            $jwtToken = "$jwtHeaderEncoded.$jwtPayloadEncoded.$signatureEncoded";
+            // Construct JWT
+            $jwtToken = "$headerEncoded.$payloadEncoded.$signatureEncoded";
     
             // Request access token
             $client = new \GuzzleHttp\Client();
@@ -196,7 +200,6 @@ class SessionController extends Controller
             return null;
         }
     }
-    
     
     
     protected function sendNotification($deviceToken, $title, $body, $customData)
