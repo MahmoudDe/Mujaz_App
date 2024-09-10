@@ -159,8 +159,7 @@ class SessionController extends Controller
             $key = json_decode(file_get_contents($jsonKeyFile), true);
     
             $client = new \Firebase\JWT\JWT();
-            $jwtClient = new \Firebase\JWT\JWT();
-            $token = $jwtClient->encode([
+            $token = \Firebase\JWT\JWT::encode([
                 'iss' => $key['client_email'],
                 'sub' => $key['client_email'],
                 'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
@@ -168,6 +167,7 @@ class SessionController extends Controller
                 'exp' => time() + 3600,
                 'iat' => time()
             ], $key['private_key'], 'RS256');
+            
     
             $client = new \GuzzleHttp\Client();
             $response = $client->post('https://oauth2.googleapis.com/token', [
