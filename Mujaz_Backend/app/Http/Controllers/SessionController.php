@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 use App\Models\session;
 use App\Models\student;
 use App\Models\teacher;
@@ -152,40 +153,74 @@ class SessionController extends Controller
         }
     }
 
-    protected function getAccessToken()
-    {
-        try {
-            $jsonKeyFile = '/var/www/Mujaz_App/credentials/firebase-service-account.json';
-            $key = json_decode(file_get_contents($jsonKeyFile), true);
+    // protected function getAccessToken()
+    // {
+    //     try {
+    //         $jsonKeyFile = '/var/www/Mujaz_App/credentials/firebase-service-account.json';
+    //         $key = json_decode(file_get_contents($jsonKeyFile), true);
     
-            $client = new \Firebase\JWT\JWT();
-            $token = \Firebase\JWT\JWT::encode([
-                'iss' => $key['client_email'],
-                'sub' => $key['client_email'],
-                'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
-                'aud' => 'https://oauth2.googleapis.com/token',
-                'exp' => time() + 3600,
-                'iat' => time()
-            ], $key['private_key'], 'RS256');
+    //         $client = new \Firebase\JWT\JWT();
+    //         $token = \Firebase\JWT\JWT::encode([
+    //             'iss' => $key['client_email'],
+    //             'sub' => $key['client_email'],
+    //             'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
+    //             'aud' => 'https://oauth2.googleapis.com/token',
+    //             'exp' => time() + 3600,
+    //             'iat' => time()
+    //         ], $key['private_key'], 'RS256');
             
     
-            $client = new \GuzzleHttp\Client();
-            $response = $client->post('https://oauth2.googleapis.com/token', [
-                'form_params' => [
-                    'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-                    'assertion' => $token,
-                ],
-            ]);
+    //         $client = new \GuzzleHttp\Client();
+    //         $response = $client->post('https://oauth2.googleapis.com/token', [
+    //             'form_params' => [
+    //                 'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+    //                 'assertion' => $token,
+    //             ],
+    //         ]);
     
-            $accessToken = json_decode((string)$response->getBody(), true);
-            return $accessToken['access_token'];
-        } catch (\Exception $e) {
-            Log::error('Error fetching access token', ['error' => $e->getMessage()]);
+    //         $accessToken = json_decode((string)$response->getBody(), true);
+    //         return $accessToken['access_token'];
+    //     } catch (\Exception $e) {
+    //         Log::error('Error fetching access token', ['error' => $e->getMessage()]);
+    //         return null;
+    //     }
+    // }
+    
+    
+
+    protected function getAccessToken()
+{
+    try {
+        $cacheKey = 'firebase_access_token';
+        $tokenData = Cache::get($cacheKey);
+
+        if ($tokenData && $tokenData['expires_at'] > now()) {
+            return $tokenData['access_token'];
+        }
+
+        // Obtain new token
+        $accessToken = shell_exec('gcloud auth application-default print-access-token');
+        if ($accessToken) {
+            $accessToken = trim($accessToken);
+            $expiresAt = now()->addMinutes(50); // Adjust based on token validity period
+
+            // Store token and expiration time
+            Cache::put($cacheKey, [
+                'access_token' => $accessToken,
+                'expires_at' => $expiresAt,
+            ], $expiresAt);
+
+            return $accessToken;
+        } else {
+            Log::error('Failed to retrieve access token');
             return null;
         }
+    } catch (\Exception $e) {
+        Log::error('Error fetching access token', ['error' => $e->getMessage()]);
+        return null;
     }
-    
-    
+}
+
     protected function sendNotification($deviceToken, $title, $body, $customData)
     {
         try {
