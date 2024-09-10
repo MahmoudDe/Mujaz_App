@@ -194,7 +194,7 @@ class SessionController extends Controller
             }
     
             // FCM API endpoint
-            $url = 'https://fcm.googleapis.com/v1/projects/mujaz-notifications/messages:send';
+            $url = 'https://fcm.googleapis.com/v1/projects/685331322872/messages:send';
 
             $data = [
                 'message' => [
