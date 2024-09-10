@@ -209,14 +209,16 @@ class SessionController extends Controller
     protected function sendNotification($deviceToken, $title, $body, $customData)
     {
         try {
+            // Retrieve access token
             $accessToken = $this->getAccessToken();
             if (!$accessToken) {
-                return response()->json('Failed to obtain access token', 500);
+                Log::error('Failed to obtain access token');
+                return response()->json(['error' => 'Failed to obtain access token'], 500);
             }
     
-            // FCM API endpoint
-            $url = 'https://fcm.googleapis.com/v1/projects/mujaz-notifications/messages:send';
-
+            $projectNumber = 'mujaz-notifications';
+            $url = 'https://fcm.googleapis.com/v1/projects/' . $projectNumber . '/messages:send';
+    
             $data = [
                 'message' => [
                     'token' => $deviceToken,
@@ -227,7 +229,8 @@ class SessionController extends Controller
                     'data' => $customData,
                 ],
             ];
-      
+    
+            // HTTP client to send the request
             $client = new \GuzzleHttp\Client();
             $response = $client->post($url, [
                 'json' => $data,
@@ -236,17 +239,28 @@ class SessionController extends Controller
                     'Content-Type' => 'application/json',
                 ],
             ]);
-
+    
+        
             if ($response->getStatusCode() === 200) {
                 Log::info('FCM notification sent successfully', ['response' => (string)$response->getBody()]);
-                return response()->json('Notification sent successfully', 200);
+                return response()->json(['message' => 'Notification sent successfully'], 200);
             } else {
-                Log::error('Failed to send FCM notification', ['response' => (string)$response->getBody()]);
-                return response()->json('Failed to send notification', 500);
+                $responseBody = json_decode((string)$response->getBody(), true);
+                Log::error('Failed to send FCM notification', ['response' => $responseBody]);
+                return response()->json(['error' => 'Failed to send notification', 'details' => $responseBody], 500);
             }
+    
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            // Handle client-side errors 
+            Log::error('Client error sending FCM notification', [
+                'error' => $e->getMessage(),
+                'response' => $e->hasResponse() ? (string)$e->getResponse()->getBody() : 'No response body'
+            ]);
+            return response()->json(['error' => 'Client error occurred while sending notification'], 400);
         } catch (\Exception $e) {
-            Log::error('Error sending FCM notification', ['error' => $e->getMessage()]);
-            return response()->json('Failed to send notification due to error', 500);
+            // Handle other exceptions
+            Log::error('Server error sending FCM notification', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Server error occurred while sending notification'], 500);
         }
     }
     
