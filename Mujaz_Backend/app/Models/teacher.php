@@ -16,6 +16,6 @@ class teacher extends Model
     ];
     public function students()
     {
-        return $this->hasMany(Student::class);
+        return $this->hasMany(student::class);
     }
 }

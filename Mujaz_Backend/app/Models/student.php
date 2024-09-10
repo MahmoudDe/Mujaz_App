@@ -23,6 +23,6 @@ class student extends Model
     ];
     public function teacher()
     {
-        return $this->belongsTo(Teacher::class);
+        return $this->belongsTo(teacher::class);
     }
 }
