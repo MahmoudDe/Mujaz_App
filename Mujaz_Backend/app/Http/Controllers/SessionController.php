@@ -100,41 +100,49 @@ class SessionController extends Controller
     
                 Log::info('Session created by teacher', ['session' => $session]);
 
-                $admin = User::where('role', 'admin')->first();
-                if ($admin) {
-                    $adminDeviceToken = Notification::where('user_id', $admin->id)->value('device_token');
+                $admins = User::where('role', 'admin')->get();
 
-                    if ($adminDeviceToken) {
-                        $title = 'جلسة جديدة تمت بواسطة الأستاذ ' . $teacher->name . '!🚀';
-                        $body = "تم تسميع جلسة جديدة✔️ للطالب " . $student->name . "!\n";
-
-                        $customData = [
-                            'التاريخ' => $request->date,
-                            'الأستاذ' => $teacher->name,
-                            'رقم الجلسة' => (string) $session->id,
-                            'الكمية' => (string) $request->amount,
-                        ];
-
-                        $this->sendNotification($adminDeviceToken, $title, $body, $customData);
-                        Log::info('Notification sent to admin by teacher', ['deviceToken' => $adminDeviceToken]);
-                    }}
+                if ($admins->isNotEmpty()) {
+                    foreach ($admins as $admin) {
+                        $adminDeviceToken = Notification::where('user_id', $admin->id)->value('device_token');
+                
+                        if ($adminDeviceToken) {
+                            $title = 'جلسة جديدة تمت بواسطة الأستاذ ' . $teacher->name . '!🚀';
+                            $body = "تم تسميع جلسة جديدة✔️ للطالب " . $student->name . "!\n";
+                
+                            $customData = [
+                                'التاريخ' => $request->date,
+                                'الأستاذ' => $teacher->name,
+                                'رقم الجلسة' => (string) $session->id,
+                                'الكمية' => (string) $request->amount,
+                            ];
+                
+                            $this->sendNotification($adminDeviceToken, $title, $body, $customData);
+                            Log::info('Notification sent to admin by teacher', ['admin_id' => $admin->id, 'deviceToken' => $adminDeviceToken]);
+                        } else {
+                            Log::warning('No device token found for admin', ['admin_id' => $admin->id]);
+                        }
+                    }
+                } else {
+                    Log::warning('No admins found in the database');
+                }
+                
                 // Send notification to the teacher's device
                 $teacherDeviceToken = Notification::where('user_id', $teacher->user_id)->value('device_token');
-    
+                
                 if ($teacherDeviceToken) {
-                    $title = ' جلسة جديدة للطالب 👑' . $student->name . '!';
+                    $title = 'جلسة جديدة للطالب 👑' . $student->name . '!';
                     $body = 'لقد قمت بإرسال الجلسة للأدمن 😍🫶🏻';
-    
+                
                     $customData = [
                         'التاريخ' => $request->date,
                         'الأستاذ' => $teacher->name,
-                        'رقم الجلسة' => (string) $session->id, 
-                        'الكمية' => (string) $request->amount, 
+                        'رقم الجلسة' => (string) $session->id,
+                        'الكمية' => (string) $request->amount,
                     ];
-                    
-    
+                
                     $this->sendNotification($teacherDeviceToken, $title, $body, $customData);
-                    Log::info('Notification sent to teacher', ['deviceToken' => $teacherDeviceToken]);
+                    Log::info('Notification sent to teacher', ['teacher_id' => $teacher->id, 'deviceToken' => $teacherDeviceToken]);
                 } else {
                     Log::warning('No device token found for teacher', ['teacher_id' => $teacher->id]);
                 }
