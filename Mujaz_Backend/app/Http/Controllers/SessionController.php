@@ -158,49 +158,32 @@ class SessionController extends Controller
             $jsonKeyFile = '/var/www/Mujaz_App/credentials/firebase-service-account.json';
             $key = json_decode(file_get_contents($jsonKeyFile), true);
     
-            $header = [
-                'alg' => 'RS256',
-                'typ' => 'JWT',
-            ];
-            
-            $payload = [
+            $client = new \Firebase\JWT\JWT();
+            $jwtClient = new \Firebase\JWT\JWT();
+            $token = $jwtClient->encode([
                 'iss' => $key['client_email'],
                 'sub' => $key['client_email'],
-                'aud' => 'https://oauth2.googleapis.com/token',
                 'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
-                'exp' => time() + 3600,  // Token valid for 1 hour
-                'iat' => time(),
-            ];
+                'aud' => 'https://oauth2.googleapis.com/token',
+                'exp' => time() + 3600,
+                'iat' => time()
+            ], $key['private_key'], 'RS256');
     
-            // Encode Header and Payload
-            $headerEncoded = base64_encode(json_encode($header));
-            $payloadEncoded = base64_encode(json_encode($payload));
-    
-            // Sign the JWT
-            $signatureInput = "$headerEncoded.$payloadEncoded";
-            $signature = hash_hmac('sha256', $signatureInput, $key['private_key'], true);
-            $signatureEncoded = base64_encode($signature);
-    
-            // Construct JWT
-            $jwtToken = "$headerEncoded.$payloadEncoded.$signatureEncoded";
-    
-            // Request access token
             $client = new \GuzzleHttp\Client();
             $response = $client->post('https://oauth2.googleapis.com/token', [
                 'form_params' => [
                     'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-                    'assertion' => $jwtToken,
+                    'assertion' => $token,
                 ],
             ]);
     
-            $accessToken = json_decode($response->getBody(), true)['access_token'];
-            return $accessToken;
+            $accessToken = json_decode((string)$response->getBody(), true);
+            return $accessToken['access_token'];
         } catch (\Exception $e) {
             Log::error('Error fetching access token', ['error' => $e->getMessage()]);
             return null;
         }
     }
-    
     
     protected function sendNotification($deviceToken, $title, $body, $customData)
     {
