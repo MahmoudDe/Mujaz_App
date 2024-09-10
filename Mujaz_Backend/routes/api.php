@@ -91,6 +91,10 @@ Route::group((['prefix' => 'admin', 'middleware' => ['auth:sanctum']]), function
 
     // DestroySession
     Route::delete('/session/destroy/{session}', [SessionController::class, 'destroy']);
+
+    Route::get('/notifications/{userId}', [NotificationController::class, 'getUserNotifications']);
+    Route::post('/notifications/{notificationId}/mark-read', [NotificationController::class, 'markAsRead']);
+
 });
 
 

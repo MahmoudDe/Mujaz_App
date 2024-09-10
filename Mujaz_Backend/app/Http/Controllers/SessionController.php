@@ -8,6 +8,7 @@ use App\Models\session;
 use App\Models\student;
 use App\Models\teacher;
 use App\Models\Notification;
+use App\Models\NotificationContent;
 use App\Models\User;
 use Illuminate\Http\Request;
 
@@ -66,11 +67,13 @@ class SessionController extends Controller
                     $body = "تم تسميع جلسة جديدة 😍! قم بإنشاء موعد آخر";
     
                     $customData = [
+                        'user_id' => (string) $user->id,
                         'التاريخ' => $request->date,
                         'الأستاذ' => $user->name,
                         'رقم الجلسة' => (string) $session->id, 
                         'الكمية' => (string) $request->amount,
                     ];
+                    
                     
                     $this->sendNotification($adminDeviceToken, $title, $body, $customData);
                     Log::info('Notification sent to admin', ['deviceToken' => $adminDeviceToken]);
@@ -112,11 +115,13 @@ class SessionController extends Controller
                                 $body = "تم تسميع جلسة جديدة✔️ للطالب " . $student->name . "!\n";
                 
                                 $customData = [
+                                    'user_id' => (string) $user->id, 
                                     'التاريخ' => $request->date,
-                                    'الأستاذ' => $teacher->name,
-                                    'رقم الجلسة' => (string) $session->id,
+                                    'الأستاذ' => $user->name,
+                                    'رقم الجلسة' => (string) $session->id, 
                                     'الكمية' => (string) $request->amount,
                                 ];
+                                
                 
                                 $this->sendNotification($deviceToken, $title, $body, $customData);
                                 Log::info('Notification sent to admin by teacher', ['admin_id' => $admin->id, 'deviceToken' => $deviceToken]);
@@ -137,11 +142,12 @@ class SessionController extends Controller
                     $body = 'لقد قمت بإرسال الجلسة للأدمن 😍🫶🏻';
                 
                     $customData = [
+                        'user_id' => (string) $user->id,  // or $admin->id, $teacher->id depending on the case
                         'التاريخ' => $request->date,
-                        'الأستاذ' => $teacher->name,
-                        'رقم الجلسة' => (string) $session->id,
+                        'الأستاذ' => $user->name,
+                        'رقم الجلسة' => (string) $session->id, 
                         'الكمية' => (string) $request->amount,
-                    ];
+                    ];                    
                 
                     $this->sendNotification($teacherDeviceToken, $title, $body, $customData);
                     Log::info('Notification sent to teacher', ['teacher_id' => $teacher->id, 'deviceToken' => $teacherDeviceToken]);
@@ -249,33 +255,36 @@ class SessionController extends Controller
                     'Content-Type' => 'application/json',
                 ],
             ]);
-    
-        
+
+
             if ($response->getStatusCode() === 200) {
                 Log::info('FCM notification sent successfully', ['response' => (string)$response->getBody()]);
+                // Store notification content in the database
+                NotificationContent::create([
+                    'user_id' => $customData['user_id'],
+                    'title' => $title,
+                    'message' => $body,
+                    'is_read' => false,
+                ]);
+    
                 return response()->json(['message' => 'Notification sent successfully'], 200);
             } else {
                 $responseBody = json_decode((string)$response->getBody(), true);
                 Log::error('Failed to send FCM notification', ['response' => $responseBody]);
                 return response()->json(['error' => 'Failed to send notification', 'details' => $responseBody], 500);
             }
-    
+            
         } catch (\GuzzleHttp\Exception\ClientException $e) {
-            // Handle client-side errors 
             Log::error('Client error sending FCM notification', [
                 'error' => $e->getMessage(),
                 'response' => $e->hasResponse() ? (string)$e->getResponse()->getBody() : 'No response body'
             ]);
             return response()->json(['error' => 'Client error occurred while sending notification'], 400);
         } catch (\Exception $e) {
-            // Handle other exceptions
             Log::error('Server error sending FCM notification', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Server error occurred while sending notification'], 500);
         }
     }
-    
-    
-
     // protected function sendNotification($deviceToken, $title, $body, $customData)
     // {
     //     $url = 'https://fcm.googleapis.com/fcm/send';
