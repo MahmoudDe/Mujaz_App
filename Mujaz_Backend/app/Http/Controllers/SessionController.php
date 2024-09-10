@@ -156,7 +156,16 @@ class SessionController extends Controller
     {
         try {
             $jsonKeyFile = '/var/www/Mujaz_App/credentials/firebase-service-account.json';
+            Log::info('Reading service account JSON file', ['path' => $jsonKeyFile]);
+    
             $key = json_decode(file_get_contents($jsonKeyFile), true);
+    
+            if (!$key) {
+                Log::error('Failed to decode service account JSON');
+                return null;
+            }
+    
+            Log::info('Service account JSON decoded successfully', ['client_email' => $key['client_email']]);
     
             $client = new \Firebase\JWT\JWT();
             $jwtClient = new \Firebase\JWT\JWT();
@@ -169,6 +178,8 @@ class SessionController extends Controller
                 'iat' => time()
             ], $key['private_key'], 'RS256');
     
+            Log::info('JWT token generated successfully');
+    
             $client = new \GuzzleHttp\Client();
             $response = $client->post('https://oauth2.googleapis.com/token', [
                 'form_params' => [
@@ -177,13 +188,23 @@ class SessionController extends Controller
                 ],
             ]);
     
+            Log::info('Token request sent to Google OAuth');
+    
             $accessToken = json_decode((string)$response->getBody(), true);
-            return $accessToken['access_token'];
+    
+            if (isset($accessToken['access_token'])) {
+                Log::info('Access token retrieved successfully', ['access_token' => $accessToken['access_token']]);
+                return $accessToken['access_token'];
+            } else {
+                Log::error('Access token not found in response', ['response' => $accessToken]);
+                return null;
+            }
         } catch (\Exception $e) {
             Log::error('Error fetching access token', ['error' => $e->getMessage()]);
             return null;
         }
     }
+    
     
     protected function sendNotification($deviceToken, $title, $body, $customData)
     {
@@ -194,7 +215,7 @@ class SessionController extends Controller
             }
     
             // FCM API endpoint
-            $url = 'https://fcm.googleapis.com/v1/projects/685331322872/messages:send';
+            $url = 'https://fcm.googleapis.com/v1/projects/mujaz-notifications/messages:send';
 
             $data = [
                 'message' => [
