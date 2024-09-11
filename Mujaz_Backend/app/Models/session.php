@@ -27,6 +27,8 @@ class session extends Model
     protected $casts = [
         'pages' => 'array',
         'ayat' => 'array',
-        'mistakes' => 'array'
+        'mistakes' => 'array',
+        'surah' => 'array',
     ];
+    
 }
